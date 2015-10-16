@@ -1,0 +1,3 @@
+[submodule "MMA8451-lib"]
+	path = MMA8451-lib
+	url = https://github.com/adafruit/Adafruit_MMA8451_Library.git
