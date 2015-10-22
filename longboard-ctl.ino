@@ -8,8 +8,7 @@
  */
 
 #include <Wire.h>
-#include <Adafruit_MMA8451.h>
-#include <Adafruit_Sensor.h>
+#include <MMA8452.h>
 
 
 // Bluetooth pins 0, 1, 3V3
@@ -20,8 +19,8 @@
 
 #define AccelerometerAddr 0x1C
 // +- 2, +- 4, +- 8
-#define AccelerationRange MMA8451_RANGE_2_G
-// #define AccelerationDataRate MMA8451_DATARATE_200_HZ
+#define AccelerationRange MMA_RANGE_2G
+// #define AccelerationDataRate MMA_800hz
 
 // Used for blinking on error
 #define StatusLed 13
@@ -29,7 +28,12 @@
 
 
 // Accelerometer
-Adafruit_MMA8451 mma = Adafruit_MMA8451();
+MMA8452 mma = MMA8452();
+
+// declarations
+void setupBluetooth();
+bool setupAccelerometer();
+
 
 void setup() {
     pinMode(StatusLed, OUTPUT);
@@ -47,12 +51,13 @@ void setup() {
 
 // MAINLOOP
 void loop() {
-    mma.read();
-    Serial.print(mma.x);
+    uint16_t x, y, z;
+    mma.getRawData(&x, &y, &z);
+    Serial.print(x);
     Serial.print(",");
-    Serial.print(mma.y);
+    Serial.print(y);
     Serial.print(",");
-    Serial.println(mma.z);
+    Serial.println(z);
 }
 
 
@@ -69,7 +74,7 @@ void errorStop() {
 
 bool setupAccelerometer() {
 
-    if (! mma.begin(AccelerometerAddr)) {
+    if (! mma.init()) {
         Serial.println("Couldnt start accelerometer!");
         errorStop();
     }
