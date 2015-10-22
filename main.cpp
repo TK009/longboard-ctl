@@ -32,18 +32,25 @@ Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
 void setup() {
     pinMode(StatusLed, OUTPUT);
+    digitalWrite(StatusLed, HIGH); // High until setup ends
     
     // Connect i2c accelerometer
     setupAccelerometer();
 
     // Connect bluetooth serial
     setupBluetooth();
+
+    digitalWrite(StatusLed, LOW);
 }
 
 // MAINLOOP
 void loop() {
 
+    // mma.read();
+    // mma.x; mma.y; mma.z;
 }
+
+
 
 // Stop and blink when error occurs
 void errorStop() {
