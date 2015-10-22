@@ -18,6 +18,7 @@
 #define BluetoothSerialSpeed 9600
 // serial config is default: 8, 1, n
 
+#define AccelerometerAddr 0x1C
 // +- 2, +- 4, +- 8
 #define AccelerationRange MMA8451_RANGE_2_G
 // #define AccelerationDataRate MMA8451_DATARATE_200_HZ
@@ -33,21 +34,25 @@ Adafruit_MMA8451 mma = Adafruit_MMA8451();
 void setup() {
     pinMode(StatusLed, OUTPUT);
     digitalWrite(StatusLed, HIGH); // High until setup ends
-    
-    // Connect i2c accelerometer
-    setupAccelerometer();
+
 
     // Connect bluetooth serial
     setupBluetooth();
+    
+    // Connect i2c accelerometer
+    setupAccelerometer();
 
     digitalWrite(StatusLed, LOW);
 }
 
 // MAINLOOP
 void loop() {
-
-    // mma.read();
-    // mma.x; mma.y; mma.z;
+    mma.read();
+    Serial.print(mma.x);
+    Serial.print(",");
+    Serial.print(mma.y);
+    Serial.print(",");
+    Serial.println(mma.z);
 }
 
 
@@ -64,16 +69,18 @@ void errorStop() {
 
 bool setupAccelerometer() {
 
-    if (! mma.begin()) {
-        // Serial.println("Couldnt start");
+    if (! mma.begin(AccelerometerAddr)) {
+        Serial.println("Couldnt start accelerometer!");
         errorStop();
     }
 
     mma.setRange(AccelerationRange);
     //mma.setDataRate(AccelerationDataRate);
+    return true;
 }
 
 void setupBluetooth() {
     Bluetooth.begin(BluetoothSerialSpeed);
+    Bluetooth.println("Bluetooth test");
 }
 
