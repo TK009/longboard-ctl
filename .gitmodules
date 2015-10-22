@@ -1,3 +1,3 @@
-[submodule "MMA8451-lib"]
-	path = MMA8451-lib
-	url = https://github.com/adafruit/Adafruit_MMA8451_Library.git
+[submodule "Arduino-MMA8452"]
+	path = Arduino-MMA8452
+	url = https://github.com/akupila/Arduino-MMA8452
