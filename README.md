@@ -10,9 +10,15 @@ Arduino electronic longboard (long skateboard) controller
 Simple protocol on top of bluetooth serial (SPI).
 
 * battery cell status, volts (as floats?)
-  `C <cell1>;<cell2>;<cell3>;<cell4>;<cell5>;<cell6>;\n`
+  ```
+  C <cell1>;<cell2>;<cell3>;<cell4>;<cell5>;<cell6>;\n
+  ```
 * debug/info/warning/error message
-  `D <msg string>\n`
+  ```
+  D <msg string>\n
+  ```
 * speed (km/h)
-  `S <float>\n`
+  ```
+  S <float>\n
+  ```
 
