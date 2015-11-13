@@ -51,13 +51,18 @@ void setup() {
 
 // MAINLOOP
 void loop() {
-    uint16_t x, y, z;
-    mma.getRawData(&x, &y, &z);
-    Serial.print(x);
-    Serial.print(",");
-    Serial.print(y);
-    Serial.print(",");
-    Serial.println(z);
+    //uint16_t x, y, z;
+    float x, y, z;
+    //mma.getRawData(&x, &y, &z);
+    mma.getAcceleration(&x, &y, &z);
+
+    Serial.print("A");
+    Serial.println((short)(x * 1000));
+
+    //Serial.print(";");
+    //Serial.print(y);
+    //Serial.print(";");
+    //Serial.println(z);
 }
 
 
@@ -75,7 +80,7 @@ void errorStop() {
 bool setupAccelerometer() {
 
     if (! mma.init()) {
-        Serial.println("Couldnt start accelerometer!");
+        Serial.println("DCouldnt start accelerometer!");
         errorStop();
     }
 
@@ -86,6 +91,6 @@ bool setupAccelerometer() {
 
 void setupBluetooth() {
     Bluetooth.begin(BluetoothSerialSpeed);
-    Bluetooth.println("Bluetooth test");
+    Bluetooth.println("DBluetooth test");
 }
 
