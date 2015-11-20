@@ -4,7 +4,8 @@
 
 
 # Arduino settings
-BOARD_TAG    = nano328
+BOARD_TAG    = nano
+BOARD_SUB    = atmega328
 MONITOR_PORT = /dev/ttyUSB0
 # MONITOR_BAUDRATE  = 9600 # 115200
 

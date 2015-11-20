@@ -5,10 +5,10 @@
  * ESC control:     PWM            pins D9 (any pwm: D3, 5, 6, 9, 10, 11)
  * Accelerometer:   I2C (library)  pins A4 (SDA), A5 (SCL)
  * Bluetooth:       Serial         pins RX0, TX1, 3V3
+ * Battery cell status: Analog IN  pins A0..A7
  */
 
-#include <Wire.h>
-#include <MMA8452.h>
+
 
 
 // Bluetooth pins 0, 1, 3V3
@@ -17,8 +17,15 @@
 #define BluetoothSerialSpeed 9600
 // serial config is default: 8, 1, n
 
-#define AccelerometerAddr 0x1C
-// +- 2, +- 4, +- 8
+
+// Pin that defines the address of accelerometer
+#define SA0 1
+
+#include <Wire.h>
+#include <MMA8452.h>
+//#include <MMA8452Reg.h>
+
+// accuracy: +- 2, +- 4, +- 8
 #define AccelerationRange MMA_RANGE_2G
 // #define AccelerationDataRate MMA_800hz
 
@@ -73,14 +80,18 @@ void errorStop() {
 }
 
 bool setupAccelerometer() {
+    Wire.begin();
 
+    Serial.println("Trying to connect accelerometer...");
     if (! mma.init()) {
         Serial.println("Couldnt start accelerometer!");
         errorStop();
     }
+    mma.setActive(false);
 
     mma.setRange(AccelerationRange);
     //mma.setDataRate(AccelerationDataRate);
+    mma.setActive(true);
     return true;
 }
 
