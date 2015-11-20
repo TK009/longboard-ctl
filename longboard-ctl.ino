@@ -58,13 +58,15 @@ void setup() {
 
 // MAINLOOP
 void loop() {
-    uint16_t x, y, z;
-    mma.getRawData(&x, &y, &z);
-    Serial.print(x);
-    Serial.print(",");
-    Serial.print(y);
-    Serial.print(",");
-    Serial.println(z);
+    float x, y, z;
+    mma.getAcceleration(&x, &y, &z);
+    if (abs(x) > 0.05) {
+        Serial.print(x);
+        Serial.print(",");
+        Serial.print(y);
+        Serial.print(",");
+        Serial.println(z);
+    }
 }
 
 
