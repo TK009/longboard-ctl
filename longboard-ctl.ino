@@ -31,14 +31,14 @@
 #define AccelerationRange MMA_RANGE_2G
 #define AccelerationDataRate MMA_12_5hz
 #define AccelerometerNewDataInterrupt 1
-// Filter for 
-#define AccelerometerSoftLPFilter 1
+// Software Filter for acceleration 
+#define AccelerometerSoftFilter 1
 
 
 
-#if AccelerometerSoftLPFilter
+#if AccelerometerSoftFilter
 #include <FilterOnePole.h>
-#define LowpassFreq 0.005
+#define LowpassFreq 0.006
 auto lpFilter = FilterOnePole( LOWPASS, LowpassFreq );
 #endif
 
@@ -96,7 +96,7 @@ void setup() {
     float x, y, z;
     mma.getAcceleration(&x, &y, &z);
     lastAccValue = x;
-#if AccelerometerSoftLPFilter
+#if AccelerometerSoftFilter
     lpFilter.input(x);
 #endif
 
@@ -145,14 +145,15 @@ inline float getXAccSample() {
     float x = getUnfilteredXAcc();
 
     if (abs(x) < ZeroResetCounterEps)
-        zeroResetCounter < MaxZeroCounter ? ++zeroResetCounter : 0 ;
+        zeroResetCounter +=
+            (zeroResetCounter < MaxZeroCounter) ? 2 : 0 ;
     else
         zeroResetCounter = (float) zeroResetCounter * 0.4;
 
     Bluetooth.print('E');
     Bluetooth.print(x*1000);
     Bluetooth.print(',');
-#if AccelerometerSoftLPFilter
+#if AccelerometerSoftFilter
     lpFilter.input(x);
     x = lpFilter.output();
 #endif
