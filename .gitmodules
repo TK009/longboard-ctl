@@ -1,3 +1,6 @@
 [submodule "lib/Arduino-MMA8452"]
 	path = lib/Arduino-MMA8452
 	url = https://github.com/TK009/Arduino-MMA8452.git
+[submodule "lib/Filters"]
+	path = lib/Filters
+	url = https://github.com/JonHub/Filters.git

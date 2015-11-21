@@ -8,6 +8,8 @@
  * Battery cell status: Analog IN  pins A0..A7
  */
 
+// Used for blinking on error
+#define StatusLed 13
 #define Throttle 9
 #define DataReadyIntPin 2
 
@@ -27,20 +29,32 @@
 
 // accuracy: +- 2, +- 4, +- 8
 #define AccelerationRange MMA_RANGE_2G
-#define AccelerationDataRate MMA_100hz
+#define AccelerationDataRate MMA_12_5hz
+#define AccelerometerNewDataInterrupt 1
+// Filter for 
+#define AccelerometerSoftLPFilter 1
 
 
-// Used for blinking on error
-#define StatusLed 13
 
+#if AccelerometerSoftLPFilter
+#include <FilterOnePole.h>
+#define LowpassFreq 0.04
+auto lpFilter = FilterOnePole( LOWPASS, LowpassFreq );
+#endif
 
 // GLOBALS
 
 // Accelerometer
-MMA8452 mma = MMA8452();
+auto mma = MMA8452();
+float zeroOffset = 0;
+unsigned int zeroResetCounter = 0;
+const unsigned calibrationSamples = 256;
 
-// tells that accelerometer data is ready
+#if AccelerometerNewDataInterrupt
+// tells that accelerometer data is ready (with interrupt)
 volatile bool accDataReady = false;
+void setDataReady() {accDataReady = true;}
+#endif
 
 float lastAccValue = 0.0;
 unsigned long lastAccTime = 0;
@@ -50,9 +64,8 @@ float xVelocity = 0.0;
 void setupBluetooth();
 bool setupAccelerometer();
 void calibrateZeroVel();
-void setDataReady() {accDataReady = true;}
 float trapezoidalRule(float fa, float fb, int dt);
-//void sendBar(float val, float maxVal);
+
 
 
 void setup() {
@@ -71,6 +84,12 @@ void setup() {
     float x, y, z;
     mma.getAcceleration(&x, &y, &z);
     lastAccValue = x;
+#if AccelerometerSoftLPFilter
+    lpFilter.input(x);
+#endif
+
+    delay(1000);
+    calibrateZeroVel();
 
     digitalWrite(StatusLed, LOW);
 }
@@ -80,17 +99,30 @@ void loop() {
     float x, y, z;
     unsigned long newAccTime;
     
-    //if (accDataReady) Bluetooth.println("DToo fast accelerometer");
-    //while (!accDataReady) {};
-    //accDataReady = false;
+#if AccelerometerNewDataInterrupt
+    if (accDataReady) Bluetooth.println("DToo fast accelerometer");
+    while (!accDataReady) {};
+    accDataReady = false;
+#endif
     newAccTime = micros();
 
     // micros overflow or not
-    unsigned long dt = (newAccTime < lastAccTime) ?
-        (newAccTime + 0x7FFFFFFF) - (lastAccTime & 0x7FFFFFFF):
+    unsigned int dt = (newAccTime < lastAccTime) ?
+        (newAccTime + 0x7FFFFFFFL) - (lastAccTime & 0x7FFFFFFFL):
         newAccTime - lastAccTime;
 
     mma.getAcceleration(&x, &y, &z);
+    x += zeroOffset;
+
+    Bluetooth.print('E');
+    Bluetooth.print(x*1000);
+    Bluetooth.print(',');
+#if AccelerometerSoftLPFilter
+    lpFilter.input(x);
+    x = lpFilter.output();
+#endif
+    Bluetooth.print(x*1000);
+    Bluetooth.print(',');
 
     xVelocity += trapezoidalRule(lastAccValue, x, dt);
 
@@ -98,12 +130,7 @@ void loop() {
     lastAccTime = newAccTime;
     lastAccValue = x;
 
-    Bluetooth.print('E');
-    Bluetooth.print(dt);
-    Bluetooth.print(',');
-    Bluetooth.print(xVelocity*1000);
-    Bluetooth.print(',');
-    Bluetooth.println(x*1000);
+    Bluetooth.println(xVelocity*1000);
     
     //if (abs(x) > 0.05) {
     //    Serial.println(x);
@@ -145,12 +172,14 @@ bool setupAccelerometer() {
     mma.setLowNoiseMode(true);
     mma.setPowerMode(MMA_HIGH_RESOLUTION);
 
-    mma.setHighPassFilter(true); // Defaults (?) to highest cutoff: 16Hz
+    mma.setHighPassFilter(true, MMA_HP4); // Defaults (?) to highest cutoff: 16Hz
 
+#if AccelerometerNewDataInterrupt
     // data ready interrupt
     mma.setInterruptsEnabled(MMA_DATA_READY);
     // all defaults to INT2
-    //attachInterrupt(digitalPinToInterrupt(DataReadyIntPin), setDataReady, FALLING);
+    attachInterrupt(digitalPinToInterrupt(DataReadyIntPin), setDataReady, FALLING);
+#endif
 
     mma.setActive(true); // settings done
     Serial.println("DAccelerometer active.");
@@ -163,26 +192,21 @@ void setupBluetooth() {
 }
 
 void calibrateZeroVel() {
-
+    Bluetooth.println("DCalibrating zero-speed");
+    
+    // avarage
+    float x, y, z, sum = 0;
+    for (unsigned i = 0; i < calibrationSamples; ++i) {
+        mma.getAcceleration(&x, &y, &z);
+        sum += x;
+    }
+    zeroOffset = sum / -calibrationSamples;
+    Bluetooth.print("DCalibrated: ");
+    Bluetooth.println(zeroOffset*1000);
 }
 
 float trapezoidalRule(float fa, float fb, int dt) {
-    return (float) dt * fa * fb * 0.5;
+    return ((float) dt) * (fa + fb) * 0.5;
 }
 
-//float rk4(float(*f)(float, float), float dt, float t, float y)
-//{
-//    float  k1 = dt * f(t, y),
-//            k2 = dt * f(t + dt / 2, y + k1 / 2),
-//            k3 = dt * f(t + dt / 2, y + k2 / 2),
-//            k4 = dt * f(t + dt, y + k3);
-//    return y + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
-//
-//}
-
-//sendBar(float val, float maxVal) {
-//    
-//    for (int i; i < )
-//    Bluetooth.println();
-//}
 
