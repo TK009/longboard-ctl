@@ -38,7 +38,7 @@
 
 #if AccelerometerSoftLPFilter
 #include <FilterOnePole.h>
-#define LowpassFreq 0.04
+#define LowpassFreq 0.005
 auto lpFilter = FilterOnePole( LOWPASS, LowpassFreq );
 #endif
 
@@ -46,9 +46,19 @@ auto lpFilter = FilterOnePole( LOWPASS, LowpassFreq );
 
 // Accelerometer
 auto mma = MMA8452();
+
+// Zero velocity handling
 float zeroOffset = 0;
 unsigned int zeroResetCounter = 0;
-const unsigned calibrationSamples = 256;
+#define ZeroResetCounterEps 0.001
+const float ZeroResetDamping = 0.01;
+const unsigned int MaxZeroCounter = 1.0 / ZeroResetDamping;
+
+// Zero offset handling
+const unsigned int CalibrationSamples = 100;
+
+unsigned long newAccTime;
+unsigned int dt;
 
 #if AccelerometerNewDataInterrupt
 // tells that accelerometer data is ready (with interrupt)
@@ -63,6 +73,8 @@ float xVelocity = 0.0;
 // declarations
 void setupBluetooth();
 bool setupAccelerometer();
+inline float getUnfilteredXAcc();
+inline float getXAccSample();
 void calibrateZeroVel();
 float trapezoidalRule(float fa, float fb, int dt);
 
@@ -96,8 +108,21 @@ void setup() {
 
 // MAINLOOP
 void loop() {
+    float x = getXAccSample();
+
+    xVelocity += trapezoidalRule(lastAccValue, x, dt);
+    // damping factor
+    xVelocity += -xVelocity * zeroResetCounter * ZeroResetDamping;
+
+    // Update globals
+    lastAccTime = newAccTime;
+    lastAccValue = x;
+
+    Bluetooth.println(xVelocity*1000);
+    
+}
+inline float getUnfilteredXAcc() {
     float x, y, z;
-    unsigned long newAccTime;
     
 #if AccelerometerNewDataInterrupt
     if (accDataReady) Bluetooth.println("DToo fast accelerometer");
@@ -107,12 +132,22 @@ void loop() {
     newAccTime = micros();
 
     // micros overflow or not
-    unsigned int dt = (newAccTime < lastAccTime) ?
+    dt = (newAccTime < lastAccTime) ?
         (newAccTime + 0x7FFFFFFFL) - (lastAccTime & 0x7FFFFFFFL):
         newAccTime - lastAccTime;
 
     mma.getAcceleration(&x, &y, &z);
     x += zeroOffset;
+    return x;
+}
+
+inline float getXAccSample() {
+    float x = getUnfilteredXAcc();
+
+    if (abs(x) < ZeroResetCounterEps)
+        zeroResetCounter < MaxZeroCounter ? ++zeroResetCounter : 0 ;
+    else
+        zeroResetCounter = (float) zeroResetCounter * 0.4;
 
     Bluetooth.print('E');
     Bluetooth.print(x*1000);
@@ -123,26 +158,8 @@ void loop() {
 #endif
     Bluetooth.print(x*1000);
     Bluetooth.print(',');
-
-    xVelocity += trapezoidalRule(lastAccValue, x, dt);
-
-    // Update globals
-    lastAccTime = newAccTime;
-    lastAccValue = x;
-
-    Bluetooth.println(xVelocity*1000);
-    
-    //if (abs(x) > 0.05) {
-    //    Serial.println(x);
-        //Serial.print(",");
-        //Serial.print(y);
-        //Serial.print(",");
-        //Serial.println(z);
-    //}
-    //Serial.print("A");
-    //Serial.println((short)(x * 1000));
+    return x;
 }
-
 
 
 // Stop and blink when error occurs
@@ -172,7 +189,7 @@ bool setupAccelerometer() {
     mma.setLowNoiseMode(true);
     mma.setPowerMode(MMA_HIGH_RESOLUTION);
 
-    mma.setHighPassFilter(true, MMA_HP4); // Defaults (?) to highest cutoff: 16Hz
+    mma.setHighPassFilter(true, MMA_HP3); // Defaults (?) to highest cutoff: 16Hz
 
 #if AccelerometerNewDataInterrupt
     // data ready interrupt
@@ -195,12 +212,11 @@ void calibrateZeroVel() {
     Bluetooth.println("DCalibrating zero-speed");
     
     // avarage
-    float x, y, z, sum = 0;
-    for (unsigned i = 0; i < calibrationSamples; ++i) {
-        mma.getAcceleration(&x, &y, &z);
-        sum += x;
+    float sum = 0;
+    for (unsigned i = 0; i < CalibrationSamples; ++i) {
+        sum += getUnfilteredXAcc();
     }
-    zeroOffset = sum / -calibrationSamples;
+    zeroOffset = -sum / (float) CalibrationSamples;
     Bluetooth.print("DCalibrated: ");
     Bluetooth.println(zeroOffset*1000);
 }
