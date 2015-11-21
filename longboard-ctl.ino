@@ -43,14 +43,16 @@ MMA8452 mma = MMA8452();
 volatile bool accDataReady = false;
 
 float lastAccValue = 0.0;
-int lastAccTime = 0;
+unsigned long lastAccTime = 0;
 float xVelocity = 0.0;
 
 // declarations
 void setupBluetooth();
 bool setupAccelerometer();
+void calibrateZeroVel();
 void setDataReady() {accDataReady = true;}
 float trapezoidalRule(float fa, float fb, int dt);
+//void sendBar(float val, float maxVal);
 
 
 void setup() {
@@ -76,7 +78,7 @@ void setup() {
 // MAINLOOP
 void loop() {
     float x, y, z;
-    int newAccTime;
+    unsigned long newAccTime;
     
     //if (accDataReady) Bluetooth.println("DToo fast accelerometer");
     //while (!accDataReady) {};
@@ -84,9 +86,9 @@ void loop() {
     newAccTime = micros();
 
     // micros overflow or not
-    int dt = (newAccTime < lastAccTime) ?
-        lastAccTime - newAccTime :
-        newAccTime  - lastAccTime;
+    unsigned long dt = (newAccTime < lastAccTime) ?
+        (newAccTime + 0x7FFFFFFF) - (lastAccTime & 0x7FFFFFFF):
+        newAccTime - lastAccTime;
 
     mma.getAcceleration(&x, &y, &z);
 
@@ -96,8 +98,12 @@ void loop() {
     lastAccTime = newAccTime;
     lastAccValue = x;
 
-    Bluetooth.print(xVelocity);
-    Bluetooth.println(x);
+    Bluetooth.print('E');
+    Bluetooth.print(dt);
+    Bluetooth.print(',');
+    Bluetooth.print(xVelocity*1000);
+    Bluetooth.print(',');
+    Bluetooth.println(x*1000);
     
     //if (abs(x) > 0.05) {
     //    Serial.println(x);
@@ -139,6 +145,8 @@ bool setupAccelerometer() {
     mma.setLowNoiseMode(true);
     mma.setPowerMode(MMA_HIGH_RESOLUTION);
 
+    mma.setHighPassFilter(true); // Defaults (?) to highest cutoff: 16Hz
+
     // data ready interrupt
     mma.setInterruptsEnabled(MMA_DATA_READY);
     // all defaults to INT2
@@ -154,6 +162,10 @@ void setupBluetooth() {
     Bluetooth.println("DBluetooth module active.");
 }
 
+void calibrateZeroVel() {
+
+}
+
 float trapezoidalRule(float fa, float fb, int dt) {
     return (float) dt * fa * fb * 0.5;
 }
@@ -166,5 +178,11 @@ float trapezoidalRule(float fa, float fb, int dt) {
 //            k4 = dt * f(t + dt, y + k3);
 //    return y + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 //
+//}
+
+//sendBar(float val, float maxVal) {
+//    
+//    for (int i; i < )
+//    Bluetooth.println();
 //}
 
