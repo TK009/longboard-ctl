@@ -10,7 +10,8 @@
 
 // Used for blinking on error
 #define StatusLed 13
-#define Throttle 9
+#define ThrottleSensor1 A0 
+#define ThrottleOut 9
 #define DataReadyIntPin 2
 
 // Bluetooth pins 0, 1, 3V3
@@ -20,7 +21,7 @@
 // serial config is default: 8, 1, n
 
 
-// Pin that defines the address of accelerometer
+// Pin that defines the address of accelerometer, (is grounded?)
 #define SA0 1
 
 #include <Wire.h>
@@ -33,6 +34,11 @@
 #define AccelerometerNewDataInterrupt 1
 // Software Filter for acceleration 
 #define AccelerometerSoftFilter 1
+
+
+// TESTING
+#define SendAccelerometerDebug 0
+#define SendThrottleDebug 1
 
 
 
@@ -84,6 +90,11 @@ void setup() {
     pinMode(StatusLed, OUTPUT);
     digitalWrite(StatusLed, HIGH); // High until setup ends
 
+    pinMode(ThrottleSensor1, INPUT);
+    // internal pull-up
+    // digitalWrite(ThrottleSensor1, HIGH);
+    pinMode(ThrottleOut, OUTPUT);
+    analogWrite(ThrottleOut, 128);
 
     // Connect bluetooth serial
     setupBluetooth();
@@ -118,9 +129,20 @@ void loop() {
     lastAccTime = newAccTime;
     lastAccValue = x;
 
+#if SendAccelerometerDebug
     Bluetooth.println(xVelocity*1000);
+#endif
+
+    int throttleIn = analogRead(ThrottleSensor1);
+
+#if SendThrottleDebug
+    Bluetooth.print('E');
+    Bluetooth.print(throttleIn);
+    Bluetooth.println();
+#endif
     
 }
+
 inline float getUnfilteredXAcc() {
     float x, y, z;
     
@@ -149,16 +171,19 @@ inline float getXAccSample() {
             (zeroResetCounter < MaxZeroCounter) ? 2 : 0 ;
     else
         zeroResetCounter = (float) zeroResetCounter * 0.4;
-
+#if SendAccelerometerDebug
     Bluetooth.print('E');
     Bluetooth.print(x*1000);
     Bluetooth.print(',');
+#endif
 #if AccelerometerSoftFilter
     lpFilter.input(x);
     x = lpFilter.output();
 #endif
+#if SendAccelerometerDebug
     Bluetooth.print(x*1000);
     Bluetooth.print(',');
+#endif
     return x;
 }
 
