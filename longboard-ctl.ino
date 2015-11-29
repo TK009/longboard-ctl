@@ -144,17 +144,17 @@ void loop() {
 #endif
 
     int throttleIn = getThrottleSample();
-    byte throttleOut = (byte)((1023 - throttleIn) * 126 / 1023); 
+    int throttleOut = 126 + (1023 - throttleIn) * 126 / 1023;
 
 #if SendThrottleDebug
     Bluetooth.print('E');
     Bluetooth.print(throttleIn);
     Bluetooth.print(',');
-    Bluetooth.print(1023 - ((int)throttleOut)*8);
+    Bluetooth.print(throttleOut);
     Bluetooth.println();
 #endif
 
-    analogWrite(ThrottleOut, throttleOut);
+    analogWrite(ThrottleOut, (byte)throttleOut);
 }
 
 inline float getUnfilteredXAcc() {
