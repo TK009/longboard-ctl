@@ -144,7 +144,7 @@ void loop() {
 #endif
 
     int throttleIn = getThrottleSample();
-    int throttleOut = 126 + (1023 - throttleIn) * 126 / 1023;
+    int throttleOut = 126 + ((float)(1023 - throttleIn)) / 1023.0 * 126.0 ;
 
 #if SendThrottleDebug
     Bluetooth.print('E');
