@@ -21,32 +21,37 @@
 // serial config is default: 8, 1, n
 
 
+#if AccelerometerIntegration
 // Pin that defines the address of accelerometer, (is grounded?)
 #define SA0 1
+#endif
 
 #include <Wire.h>
 #include <MMA8452.h>
 //#include <MMA8452Reg.h>
 
+#define AccelerometerIntegration 0
+
+// Software Filter for acceleration 
+#define AccelerometerSoftFilter 1
+
 // accuracy: +- 2, +- 4, +- 8
 #define AccelerationRange MMA_RANGE_2G
 #define AccelerationDataRate MMA_12_5hz
 #define AccelerometerNewDataInterrupt 1
-// Software Filter for acceleration 
-#define AccelerometerSoftFilter 1
+
+#if AccelerometerSoftFilter and AccelerometerIntegration
+#include <FilterOnePole.h>
+#define LowpassFreq 0.006
+auto lpFilter = FilterOnePole( LOWPASS, LowpassFreq );
+#endif
+
 
 
 // TESTING
 #define SendAccelerometerDebug 0
 #define SendThrottleDebug 1
 
-
-
-#if AccelerometerSoftFilter
-#include <FilterOnePole.h>
-#define LowpassFreq 0.006
-auto lpFilter = FilterOnePole( LOWPASS, LowpassFreq );
-#endif
 
 // GLOBALS
 
@@ -66,15 +71,15 @@ const unsigned int CalibrationSamples = 100;
 unsigned long newAccTime;
 unsigned int dt;
 
+float lastAccValue = 0.0;
+unsigned long lastAccTime = 0;
+float xVelocity = 0.0;
+
 #if AccelerometerNewDataInterrupt
 // tells that accelerometer data is ready (with interrupt)
 volatile bool accDataReady = false;
 void setDataReady() {accDataReady = true;}
 #endif
-
-float lastAccValue = 0.0;
-unsigned long lastAccTime = 0;
-float xVelocity = 0.0;
 
 // declarations
 void setupBluetooth();
@@ -83,6 +88,7 @@ inline float getUnfilteredXAcc();
 inline float getXAccSample();
 void calibrateZeroVel();
 float trapezoidalRule(float fa, float fb, int dt);
+int getThrottleSample();
 
 
 
@@ -102,6 +108,7 @@ void setup() {
     // Connect i2c accelerometer
     setupAccelerometer();
 
+#if AccelerometerIntegration
     // get initial values
     lastAccTime = micros();
     float x, y, z;
@@ -113,12 +120,14 @@ void setup() {
 
     delay(1000);
     calibrateZeroVel();
+#endif
 
     digitalWrite(StatusLed, LOW);
 }
 
 // MAINLOOP
 void loop() {
+#if AccelerometerIntegration
     float x = getXAccSample();
 
     xVelocity += trapezoidalRule(lastAccValue, x, dt);
@@ -132,15 +141,12 @@ void loop() {
 #if SendAccelerometerDebug
     Bluetooth.println(xVelocity*1000);
 #endif
-
-    int throttleIn = analogRead(ThrottleSensor1);
-
-#if SendThrottleDebug
-    Bluetooth.print('E');
-    Bluetooth.print(throttleIn);
-    Bluetooth.println();
 #endif
-    
+
+    int throttleIn = getThrottleSample();
+    byte throttleOut = (byte)((1023 - throttleIn) * 126 / 1023); 
+
+    analogWrite(ThrottleOut, throttleOut);
 }
 
 inline float getUnfilteredXAcc() {
@@ -163,6 +169,30 @@ inline float getUnfilteredXAcc() {
     return x;
 }
 
+int getThrottleSample() {
+    int throttleIn = 0; // avarage accumulator
+    int sample = 0;
+    const unsigned ThrottleSamples = 6;
+
+#if SendThrottleDebug
+    Bluetooth.print('E');
+#endif
+
+    for (unsigned i = 0; i < ThrottleSamples; ++i) {
+        sample = analogRead(ThrottleSensor1);
+#if SendThrottleDebug
+        Bluetooth.print(sample);
+        Bluetooth.print(',');
+#endif
+        throttleIn += sample;
+
+    }
+    throttleIn /= ThrottleSamples;
+
+    
+    return throttleIn;
+}
+
 inline float getXAccSample() {
     float x = getUnfilteredXAcc();
 
@@ -176,7 +206,7 @@ inline float getXAccSample() {
     Bluetooth.print(x*1000);
     Bluetooth.print(',');
 #endif
-#if AccelerometerSoftFilter
+#if AccelerometerSoftFilter and AccelerometerIntegration
     lpFilter.input(x);
     x = lpFilter.output();
 #endif
@@ -217,7 +247,7 @@ bool setupAccelerometer() {
 
     mma.setHighPassFilter(true, MMA_HP3); // Defaults (?) to highest cutoff: 16Hz
 
-#if AccelerometerNewDataInterrupt
+#if AccelerometerNewDataInterrupt and AccelerometerIntegration
     // data ready interrupt
     mma.setInterruptsEnabled(MMA_DATA_READY);
     // all defaults to INT2

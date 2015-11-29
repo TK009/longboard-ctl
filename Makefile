@@ -10,7 +10,7 @@ MONITOR_PORT = /dev/ttyUSB0
 # MONITOR_BAUDRATE  = 9600 # 115200
 
 # Libraries
-ARDUINO_LIBS = Wire Arduino-MMA8452 Filters
+ARDUINO_LIBS = Wire Arduino-MMA8452
 
 
 ### Do not touch - used for binaries path
