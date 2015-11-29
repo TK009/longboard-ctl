@@ -56,7 +56,7 @@ auto lpFilter = FilterOnePole( LOWPASS, LowpassFreq );
 // GLOBALS
 
 // Accelerometer
-auto mma = MMA8452();
+MMA8452 mma = MMA8452();
 
 // Zero velocity handling
 float zeroOffset = 0;
@@ -106,7 +106,7 @@ void setup() {
     setupBluetooth();
     
     // Connect i2c accelerometer
-    setupAccelerometer();
+    //setupAccelerometer();
 
 #if AccelerometerIntegration
     // get initial values
@@ -146,6 +146,14 @@ void loop() {
     int throttleIn = getThrottleSample();
     byte throttleOut = (byte)((1023 - throttleIn) * 126 / 1023); 
 
+#if SendThrottleDebug
+    Bluetooth.print('E');
+    Bluetooth.print(throttleIn);
+    Bluetooth.print(',');
+    Bluetooth.print(1023 - ((int)throttleOut)*8);
+    Bluetooth.println();
+#endif
+
     analogWrite(ThrottleOut, throttleOut);
 }
 
@@ -174,16 +182,8 @@ int getThrottleSample() {
     int sample = 0;
     const unsigned ThrottleSamples = 6;
 
-#if SendThrottleDebug
-    Bluetooth.print('E');
-#endif
-
     for (unsigned i = 0; i < ThrottleSamples; ++i) {
         sample = analogRead(ThrottleSensor1);
-#if SendThrottleDebug
-        Bluetooth.print(sample);
-        Bluetooth.print(',');
-#endif
         throttleIn += sample;
 
     }
