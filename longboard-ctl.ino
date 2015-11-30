@@ -177,7 +177,9 @@ void loop() {
     Bluetooth.println();
 #endif
 
-    analogWrite(ThrottleOut, (byte) ((throttleBluetoothOut > 126) ? throttleBluetoothOut : throttleSensorOut) );
+    analogWrite(ThrottleOut, (byte) constrain(((throttleBluetoothOut > 126) ? throttleBluetoothOut : throttleSensorOut),
+                126, 255)
+            );
 }
 
 #if AccelerometerIntegration
