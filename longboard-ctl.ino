@@ -20,25 +20,26 @@
 #define BluetoothSerialSpeed 9600
 // serial config is default: 8, 1, n
 
+#define AccelerometerIntegration 0
 
 #if AccelerometerIntegration
 // Pin that defines the address of accelerometer, (is grounded?)
 #define SA0 1
-#endif
 
 #include <Wire.h>
 #include <MMA8452.h>
 //#include <MMA8452Reg.h>
-
-#define AccelerometerIntegration 0
+#endif
 
 // Software Filter for acceleration 
 #define AccelerometerSoftFilter 1
 
+#if AccelerometerIntegration
 // accuracy: +- 2, +- 4, +- 8
 #define AccelerationRange MMA_RANGE_2G
 #define AccelerationDataRate MMA_12_5hz
 #define AccelerometerNewDataInterrupt 1
+#endif
 
 #if AccelerometerSoftFilter and AccelerometerIntegration
 #include <FilterOnePole.h>
@@ -55,6 +56,7 @@ auto lpFilter = FilterOnePole( LOWPASS, LowpassFreq );
 
 // GLOBALS
 
+#if AccelerometerIntegration
 // Accelerometer
 MMA8452 mma = MMA8452();
 
@@ -74,6 +76,7 @@ unsigned int dt;
 float lastAccValue = 0.0;
 unsigned long lastAccTime = 0;
 float xVelocity = 0.0;
+#endif
 
 int throttleBluetoothOut = 0;
 
@@ -109,9 +112,9 @@ void setup() {
     setupBluetooth();
     
     // Connect i2c accelerometer
+#if AccelerometerIntegration
     //setupAccelerometer();
 
-#if AccelerometerIntegration
     // get initial values
     lastAccTime = micros();
     float x, y, z;
@@ -177,6 +180,7 @@ void loop() {
     analogWrite(ThrottleOut, (byte) ((throttleBluetoothOut > 126) ? throttleBluetoothOut : throttleSensorOut) );
 }
 
+#if AccelerometerIntegration
 inline float getUnfilteredXAcc() {
     float x, y, z;
     
@@ -196,6 +200,7 @@ inline float getUnfilteredXAcc() {
     x += zeroOffset;
     return x;
 }
+#endif
 
 int getThrottleSample() {
     int throttleIn = 0; // avarage accumulator
@@ -213,6 +218,7 @@ int getThrottleSample() {
     return throttleIn;
 }
 
+#if AccelerometerIntegration
 inline float getXAccSample() {
     float x = getUnfilteredXAcc();
 
@@ -236,6 +242,7 @@ inline float getXAccSample() {
 #endif
     return x;
 }
+#endif
 
 
 // Stop and blink when error occurs
@@ -249,6 +256,7 @@ void errorStop() {
     }
 }
 
+#if AccelerometerIntegration
 bool setupAccelerometer() {
     Wire.begin();
 
@@ -279,12 +287,14 @@ bool setupAccelerometer() {
     Serial.println("DAccelerometer active.");
     return true;
 }
+#endif
 
 void setupBluetooth() {
     Bluetooth.begin(BluetoothSerialSpeed);
     Bluetooth.println("DBluetooth module active.");
 }
 
+#if AccelerometerIntegration
 void calibrateZeroVel() {
     Bluetooth.println("DCalibrating zero-speed");
     
@@ -297,6 +307,7 @@ void calibrateZeroVel() {
     Bluetooth.print("DCalibrated: ");
     Bluetooth.println(zeroOffset*1000);
 }
+#endif
 
 float trapezoidalRule(float fa, float fb, int dt) {
     return ((float) dt) * (fa + fb) * 0.5;
