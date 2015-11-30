@@ -156,7 +156,7 @@ void loop() {
                 errorStop();
                 break;
             case 'G':
-                throttleBluetoothOut = 126 + constrain(Bluetooth.parseInt()*1.26, 0, 126);
+                throttleBluetoothOut = (int)(126.0 + constrain((float)Bluetooth.parseInt()*1.26, 0.0, 126.0));
                 break;
             default:
                 break;
