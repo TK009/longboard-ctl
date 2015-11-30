@@ -174,7 +174,7 @@ void loop() {
     Bluetooth.println();
 #endif
 
-    analogWrite(ThrottleOut, (byte) ((throttleBluetoothOut > 0) ? throttleBluetoothOut : throttleSensorOut) );
+    analogWrite(ThrottleOut, (byte) ((throttleBluetoothOut > 126) ? throttleBluetoothOut : throttleSensorOut) );
 }
 
 inline float getUnfilteredXAcc() {
