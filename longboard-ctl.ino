@@ -75,6 +75,8 @@ float lastAccValue = 0.0;
 unsigned long lastAccTime = 0;
 float xVelocity = 0.0;
 
+int throttleBluetoothOut = 0;
+
 #if AccelerometerNewDataInterrupt
 // tells that accelerometer data is ready (with interrupt)
 volatile bool accDataReady = false;
@@ -84,6 +86,7 @@ void setDataReady() {accDataReady = true;}
 // declarations
 void setupBluetooth();
 bool setupAccelerometer();
+void errorStop();
 inline float getUnfilteredXAcc();
 inline float getXAccSample();
 void calibrateZeroVel();
@@ -144,17 +147,34 @@ void loop() {
 #endif
 
     int throttleIn = getThrottleSample();
-    int throttleOut = 126 + ((float)(1023 - throttleIn)) / 1023.0 * 126.0 ;
+    int throttleSensorOut = 126 + ((float)(1023 - throttleIn)) / 1023.0 * 126.0 ;
+
+
+    while (Bluetooth.available()) {
+        switch (Bluetooth.read()) {
+            case 'X':
+                errorStop();
+                break;
+            case 'G':
+                throttleBluetoothOut = 126 + constrain(Bluetooth.parseInt()*1.26, 0, 126);
+                break;
+            default:
+                break;
+        }
+        if (Bluetooth.available() && Bluetooth.read() == '\n') continue;
+    }
 
 #if SendThrottleDebug
     Bluetooth.print('E');
     Bluetooth.print(throttleIn);
     Bluetooth.print(',');
-    Bluetooth.print(throttleOut);
+    Bluetooth.print(((int)throttleSensorOut) * 8);
+    Bluetooth.print(',');
+    Bluetooth.print(((int)throttleBluetoothOut) * 8);
     Bluetooth.println();
 #endif
 
-    analogWrite(ThrottleOut, (byte)throttleOut);
+    analogWrite(ThrottleOut, (byte) ((throttleBluetoothOut > 0) ? throttleBluetoothOut : throttleSensorOut) );
 }
 
 inline float getUnfilteredXAcc() {
@@ -180,7 +200,7 @@ inline float getUnfilteredXAcc() {
 int getThrottleSample() {
     int throttleIn = 0; // avarage accumulator
     int sample = 0;
-    const unsigned ThrottleSamples = 6;
+    const unsigned ThrottleSamples = 12;
 
     for (unsigned i = 0; i < ThrottleSamples; ++i) {
         sample = analogRead(ThrottleSensor1);
@@ -220,6 +240,7 @@ inline float getXAccSample() {
 
 // Stop and blink when error occurs
 void errorStop() {
+    analogWrite(ThrottleOut, 126); // zero throttle
     while (1) {
         digitalWrite(StatusLed, LOW);
         delay(1000);
